@@ -1,0 +1,14 @@
+{
+  "appId": "com.tgcc.app",
+  "appName": "TGCC App",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0a0f0d",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
