@@ -38,23 +38,33 @@ const COLUMN_MAP = {
   'height': 'height',
   'height (m)': 'height',
   'h': 'height',
+  'mh(m)': 'height',
+  'mh': 'height',
+  'merchantable height': 'height',
+  'merchantable height (m)': 'height',
   'db': 'db',
   'diameter base': 'db',
   'diameter_base': 'db',
   'db (cm)': 'db',
+  'db(cm)': 'db',
   'dm': 'dm',
   'diameter middle': 'dm',
   'diameter_middle': 'dm',
   'dm (cm)': 'dm',
+  'dm(cm)': 'dm',
   'dt': 'dt',
   'diameter top': 'dt',
   'diameter_top': 'dt',
   'dt (cm)': 'dt',
+  'dt(cm)': 'dt',
   'wood density': 'woodDensity',
   'wood_density': 'woodDensity',
   'wooddensity': 'woodDensity',
   'density': 'woodDensity',
   'density (kg/m3)': 'woodDensity',
+  'species density(kg/m3)': 'woodDensity',
+  'species density': 'woodDensity',
+  'density(kg/m3)': 'woodDensity',
   'crown ns': 'crownNS',
   'crown_ns': 'crownNS',
   'crownns': 'crownNS',
@@ -116,8 +126,16 @@ function parseRow(row, headerMap, index) {
     }
   }
 
+  // Smart height translation: if a tree has height (or MH) but no rt and rb,
+  // we set rt = height and rb = 0 so height calculates correctly in calculations.js
+  if (tree.height !== undefined && tree.height !== 0 && tree.rt === 0 && tree.rb === 0) {
+    tree.rt = tree.height;
+    tree.rb = 0;
+  }
+
   return tree;
 }
+
 
 /**
  * Parse an XLSX file and extract tree data
@@ -292,3 +310,61 @@ export async function exportToCSV(trees, standMetrics, filename = 'tgcc_results.
   link.click();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Generate and download standard TGCC Excel Template
+ * Supports native mobile sharing on Android/iOS via Capacitor Filesystem & Share plugins
+ * @returns {Promise<void>}
+ */
+export async function downloadStandardTemplate() {
+  const headers = [
+    'Species', 'DBH (cm)', 'Reading Top (m)', 'Reading Base (m)',
+    'Diameter Base (cm)', 'Diameter Middle (cm)', 'Diameter Top (cm)',
+    'Density (kg/m3)', 'Crown NS (m)', 'Crown EW (m)'
+  ];
+  
+  const sampleRows = [
+    ['Pine', 25.4, 18.5, 1.2, 28.2, 22.1, 12.5, 450, 5.2, 4.8],
+    ['Mahogany', 45.2, 24.0, 0.8, 52.1, 41.5, 20.0, 750, 8.5, 9.2],
+    ['Teak', 32.1, 20.5, 1.0, 35.8, 28.4, 15.2, 630, 6.0, 6.2]
+  ];
+
+  const wsData = [headers, ...sampleRows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TGCC Template');
+  
+  const filename = 'TGCC_Standard_Template.xlsx';
+
+  // Native Mobile Download/Share
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64Data = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+      
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64Data,
+        directory: Directory.Cache
+      });
+
+      await Share.share({
+        title: 'TGCC Standard Template',
+        text: 'Tree Growth Characteristics Calculator - Standard Excel Template',
+        url: result.uri,
+        dialogTitle: 'Save or Share Template'
+      });
+      return;
+    } catch (err) {
+      console.error('Native sharing failed, falling back to browser download:', err);
+      throw new Error(`Mobile download failed: ${err.message}`);
+    }
+  }
+
+  // Browser download fallback
+  try {
+    XLSX.writeFile(wb, filename);
+  } catch (err) {
+    throw new Error(`Download failed: ${err.message}`);
+  }
+}
+

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { calculateAllTreeMetrics, calculateStandMetrics, fmt } from '../utils/calculations';
-import { parseFile, exportToCSV } from '../utils/fileParser';
+import { parseFile, exportToCSV, downloadStandardTemplate } from '../utils/fileParser';
+
 
 const createEmptyTree = (id) => ({
   id,
@@ -129,15 +130,15 @@ export default function StandCalculator({ onTreesChange, onPlotSizeChange }) {
       const importedTrees = parsed.map((row, i) => ({
         id: i + 1,
         species: row.species || '',
-        dbh: row.dbh || '',
-        rt: row.rt || '',
-        rb: row.rb || '',
-        db: row.db || '',
-        dm: row.dm || '',
-        dt: row.dt || '',
-        woodDensity: row.woodDensity || '',
-        crownNS: row.crownNS || '',
-        crownEW: row.crownEW || '',
+        dbh: row.dbh !== undefined ? row.dbh : '',
+        rt: row.rt !== undefined ? row.rt : '',
+        rb: row.rb !== undefined ? row.rb : '',
+        db: row.db !== undefined ? row.db : '',
+        dm: row.dm !== undefined ? row.dm : '',
+        dt: row.dt !== undefined ? row.dt : '',
+        woodDensity: row.woodDensity !== undefined ? row.woodDensity : '',
+        crownNS: row.crownNS !== undefined ? row.crownNS : '',
+        crownEW: row.crownEW !== undefined ? row.crownEW : '',
       }));
 
       setTrees(importedTrees);
@@ -154,6 +155,18 @@ export default function StandCalculator({ onTreesChange, onPlotSizeChange }) {
 
     // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Handle template download (supports both mobile native sharing and browser download)
+  const handleDownloadTemplate = async () => {
+    try {
+      setStatus({ type: 'info', message: 'Generating TGCC standard template...' });
+      await downloadStandardTemplate();
+      setStatus({ type: 'success', message: '✅ TGCC Standard Template downloaded successfully!' });
+      setTimeout(() => setStatus(null), 4000);
+    } catch (err) {
+      setStatus({ type: 'error', message: `❌ Template download failed: ${err.message}` });
+    }
   };
 
   // Export data
@@ -200,6 +213,11 @@ export default function StandCalculator({ onTreesChange, onPlotSizeChange }) {
               style={{ display: 'none' }}
             />
           </label>
+
+          <button className="btn btn--secondary btn--sm" onClick={handleDownloadTemplate}>
+            📋 Download Template
+          </button>
+
           <button className="btn btn--secondary btn--sm" onClick={addRow}>
             ➕ Add Row
           </button>
